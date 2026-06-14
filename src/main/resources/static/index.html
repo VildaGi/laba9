@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Список покупок</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="container">
+    <h1>📝 Список покупок</h1>
+
+    <div class="add-form">
+        <input type="text" id="itemName" placeholder="Введите товар..." maxlength="100">
+        <button id="addBtn">➕ Добавить</button>
+    </div>
+
+    <div class="filter-buttons">
+        <button class="filter-btn active" data-filter="all">Все</button>
+        <button class="filter-btn" data-filter="active">Активные</button>
+        <button class="filter-btn" data-filter="completed">Купленные</button>
+    </div>
+
+    <ul id="shoppingList" class="shopping-list"></ul>
+
+    <div class="stats">
+        <span id="stats">Загрузка...</span>
+    </div>
+</div>
+
+<script>
+    const API_URL = '/api/shopping';
+    let currentFilter = 'all';
+
+    async function loadItems() {
+        try {
+            const response = await fetch(API_URL);
+            const items = await response.json();
+            renderItems(items);
+            updateStats(items);
+        } catch (error) {
+            console.error('Ошибка загрузки:', error);
+        }
+    }
+
+    function renderItems(items) {
+        const listElement = document.getElementById('shoppingList');
+        let filteredItems = items;
+
+        if (currentFilter === 'active') {
+            filteredItems = items.filter(item => !item.purchased);
+        } else if (currentFilter === 'completed') {
+            filteredItems = items.filter(item => item.purchased);
+        }
+
+        if (filteredItems.length === 0) {
+            listElement.innerHTML = '<div class="empty-state">✨ Список пуст. Добавьте товары!</div>';
+            return;
+        }
+
+        listElement.innerHTML = filteredItems.map(item => `
+                <li class="shopping-item ${item.purchased ? 'purchased' : ''}" data-id="${item.id}">
+                    <span class="item-name">${escapeHtml(item.name)}</span>
+                    <div class="item-actions">
+                        ${!item.purchased ?
+            `<button class="buy-btn" onclick="markPurchased(${item.id})">✅ Куплено</button>` :
+            '<span class="purchased-badge">✔ Куплен</span>'
+        }
+                        <button class="delete-btn" onclick="deleteItem(${item.id})">🗑 Удалить</button>
+                    </div>
+                </li>
+            `).join('');
+    }
+
+    function updateStats(items) {
+        const total = items.length;
+        const purchased = items.filter(i => i.purchased).length;
+        const active = total - purchased;
+        document.getElementById('stats').innerHTML =
+            `📊 Всего: ${total} | 🛒 Активных: ${active} | ✅ Куплено: ${purchased}`;
+    }
+
+    async function addItem() {
+        const input = document.getElementById('itemName');
+        const name = input.value.trim();
+
+        if (!name) {
+            alert('Введите название товара!');
+            return;
+        }
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            });
+
+            if (response.ok) {
+                input.value = '';
+                loadItems();
+            } else {
+                alert('Ошибка при добавлении');
+            }
+        } catch (error) {
+            console.error('Ошибка:', error);
+            alert('Не удалось добавить товар');
+        }
+    }
+
+    async function deleteItem(id) {
+        if (!confirm('Удалить товар из списка?')) return;
+
+        try {
+            const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+            if (response.ok) {
+                loadItems();
+            } else {
+                alert('Ошибка при удалении');
+            }
+        } catch (error) {
+            console.error('Ошибка:', error);
+        }
+    }
+
+    async function markPurchased(id) {
+        try {
+            const response = await fetch(`${API_URL}/${id}/purchase`, { method: 'PUT' });
+            if (response.ok) {
+                loadItems();
+            } else {
+                alert('Ошибка при отметке');
+            }
+        } catch (error) {
+            console.error('Ошибка:', error);
+        }
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    document.getElementById('addBtn').addEventListener('click', addItem);
+    document.getElementById('itemName').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') addItem();
+    });
+
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.dataset.filter;
+            loadItems();
+        });
+    });
+
+    loadItems();
+    setInterval(loadItems, 3000);
+</script>
+</body>
+</html>
