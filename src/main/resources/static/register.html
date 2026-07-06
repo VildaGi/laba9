@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация - Список покупок</title>
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        .register-container {
+            max-width: 450px;
+            margin: 50px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .register-container h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #34495e;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        .form-group input.error {
+            border-color: #e74c3c;
+        }
+        .form-group .error-text {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+        .register-btn {
+            width: 100%;
+            padding: 12px;
+            background: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .register-btn:hover {
+            background: #27ae60;
+        }
+        .register-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .login-link a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+        .message {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .message.error {
+            background: #e74c3c;
+            color: white;
+        }
+        .message.success {
+            background: #2ecc71;
+            color: white;
+        }
+        .password-hint {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+<div class="register-container">
+    <h2>📝 Регистрация</h2>
+
+    <div id="message" style="display: none;" class="message"></div>
+
+    <form id="registerForm">
+        <div class="form-group">
+            <label for="username">Имя пользователя</label>
+            <input type="text" id="username" required minlength="3" maxlength="50">
+            <div id="usernameError" class="error-text"></div>
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" required>
+            <div id="emailError" class="error-text"></div>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Пароль</label>
+            <input type="password" id="password" required minlength="6">
+            <div class="password-hint">Минимум 6 символов</div>
+            <div id="passwordError" class="error-text"></div>
+        </div>
+
+        <div class="form-group">
+            <label for="confirmPassword">Подтверждение пароля</label>
+            <input type="password" id="confirmPassword" required>
+            <div id="confirmError" class="error-text"></div>
+        </div>
+
+        <button type="submit" class="register-btn" id="registerBtn">Зарегистрироваться</button>
+    </form>
+
+    <div class="login-link">
+        Уже есть аккаунт? <a href="/login">Войти</a>
+    </div>
+</div>
+
+<script>
+    const API_URL = '/api/v1/auth';
+
+    // Валидация в реальном времени
+    document.getElementById('username').addEventListener('blur', async function() {
+        const username = this.value.trim();
+        if (username.length < 3) {
+            showError('username', 'Минимум 3 символа');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/check/username?username=${encodeURIComponent(username)}`);
+            const data = await response.json();
+            if (!data.available) {
+                showError('username', 'Имя пользователя уже занято');
+            } else {
+                clearError('username');
+            }
+        } catch (error) {
+            console.error('Ошибка проверки:', error);
+        }
+    });
+
+    document.getElementById('email').addEventListener('blur', async function() {
+        const email = this.value.trim();
+        if (!email.match(/^[A-Za-z0-9+_.-]+@(.+)$/)) {
+            showError('email', 'Некорректный email');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/check/email?email=${encodeURIComponent(email)}`);
+            const data = await response.json();
+            if (!data.available) {
+                showError('email', 'Email уже используется');
+            } else {
+                clearError('email');
+            }
+        } catch (error) {
+            console.error('Ошибка проверки:', error);
+        }
+    });
+
+    document.getElementById('confirmPassword').addEventListener('input', function() {
+        const password = document.getElementById('password').value;
+        if (this.value !== password) {
+            showError('confirm', 'Пароли не совпадают');
+        } else {
+            clearError('confirm');
+        }
+    });
+
+    function showError(field, message) {
+        const errorElement = document.getElementById(`${field}Error`);
+        const inputElement = document.getElementById(field);
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+        if (inputElement) {
+            inputElement.classList.add('error');
+        }
+    }
+
+    function clearError(field) {
+        const errorElement = document.getElementById(`${field}Error`);
+        const inputElement = document.getElementById(field);
+        if (errorElement) {
+            errorElement.style.display = 'none';
+        }
+        if (inputElement) {
+            inputElement.classList.remove('error');
+        }
+    }
+
+    // Обработка отправки формы
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const username = document.getElementById('username').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        // Финальная валидация
+        if (password !== confirmPassword) {
+            showMessage('Пароли не совпадают', 'error');
+            return;
+        }
+
+        const button = document.getElementById('registerBtn');
+        button.disabled = true;
+        button.textContent = 'Регистрация...';
+
+        try {
+            const response = await fetch(`${API_URL}/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password, email })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showMessage('Регистрация успешна! Перенаправление на страницу входа...', 'success');
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000);
+            } else {
+                showMessage(data.message || 'Ошибка регистрации', 'error');
+                button.disabled = false;
+                button.textContent = 'Зарегистрироваться';
+            }
+        } catch (error) {
+            console.error('Ошибка:', error);
+            showMessage('Ошибка соединения с сервером', 'error');
+            button.disabled = false;
+            button.textContent = 'Зарегистрироваться';
+        }
+    });
+
+    function showMessage(text, type) {
+        const messageElement = document.getElementById('message');
+        messageElement.textContent = text;
+        messageElement.className = `message ${type}`;
+        messageElement.style.display = 'block';
+    }
+</script>
+</body>
+</html>

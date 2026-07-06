@@ -3,9 +3,9 @@ package org.example.laba9.repository;
 import org.example.laba9.model.ShoppingItem;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.Collection;
 
 @Repository
 public class ShoppingRepository {
@@ -30,5 +30,10 @@ public class ShoppingRepository {
 
     public void deleteById(Long id) {
         items.remove(id);
+    }
+
+    public void deleteAll() {
+        items.clear();
+        idGenerator.set(1);
     }
 }

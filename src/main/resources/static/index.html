@@ -10,6 +10,11 @@
 <div class="container">
     <h1>📝 Список покупок</h1>
 
+    <div class="user-info">
+        <span>👋 Добро пожаловать, <span id="username">Пользователь</span></span>
+        <a href="/logout" class="logout-link">🚪 Выйти</a>
+    </div>
+
     <div class="add-form">
         <input type="text" id="itemName" placeholder="Введите товар..." maxlength="100">
         <button id="addBtn">➕ Добавить</button>
@@ -29,12 +34,19 @@
 </div>
 
 <script>
-    const API_URL = '/api/shopping';
+    const API_URL = '/api/v1/shopping-items';
     let currentFilter = 'all';
 
     async function loadItems() {
         try {
             const response = await fetch(API_URL);
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+            if (!response.ok) {
+                throw new Error('Ошибка загрузки');
+            }
             const items = await response.json();
             renderItems(items);
             updateStats(items);
@@ -93,7 +105,7 @@
             const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: name })
+                body: JSON.stringify({ name: name, purchased: false })
             });
 
             if (response.ok) {
@@ -125,7 +137,7 @@
 
     async function markPurchased(id) {
         try {
-            const response = await fetch(`${API_URL}/${id}/purchase`, { method: 'PUT' });
+            const response = await fetch(`${API_URL}/${id}/purchase`, { method: 'PATCH' });
             if (response.ok) {
                 loadItems();
             } else {
@@ -142,6 +154,7 @@
         return div.innerHTML;
     }
 
+    // Event Listeners
     document.getElementById('addBtn').addEventListener('click', addItem);
     document.getElementById('itemName').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') addItem();
@@ -156,8 +169,8 @@
         });
     });
 
+    // Load initial data
     loadItems();
-    setInterval(loadItems, 3000);
 </script>
 </body>
 </html>
